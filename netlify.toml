@@ -20,13 +20,3 @@
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Content-Type = "application/json"
-
-[[redirects]]
-  from = "/.netlify/functions/catalog/movie/*.json"
-  to = "/.netlify/functions/catalog"
-  status = 200
-
-[[redirects]]
-  from = "/catalog/movie/*.json"
-  to = "/.netlify/functions/catalog"
-  status = 200
