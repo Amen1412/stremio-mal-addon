@@ -1,3 +1,4 @@
+// This handles requests to /catalog/movie/malayalam_movies_latest.json
 const tmdb = require('../../utils/tmdb');
 
 exports.handler = async (event, context) => {
@@ -14,27 +15,14 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('Full request path:', event.path);
+    console.log('Catalog.json request path:', event.path);
     console.log('Query parameters:', event.queryStringParameters);
-
-    // Extract path without .json extension if present
-    const cleanPath = event.path.replace(/\.json$/, '');
-    console.log('Clean path:', cleanPath);
-
-    // Simple check for catalog requests
-    if (!cleanPath.includes('/catalog/') && !event.path.includes('/catalog/')) {
-      return {
-        statusCode: 404,
-        headers,
-        body: JSON.stringify({ error: 'Not a catalog endpoint' })
-      };
-    }
 
     const queryParams = event.queryStringParameters || {};
     const skip = parseInt(queryParams.skip || '0');
     const genre = queryParams.genre;
     
-    console.log(`Catalog request - Skip: ${skip}, Genre: ${genre || 'none'}`);
+    console.log(`Catalog.json request - Skip: ${skip}, Genre: ${genre || 'none'}`);
 
     // Get Malayalam movies
     const page = Math.floor(skip / 20) + 1;
@@ -55,7 +43,7 @@ exports.handler = async (event, context) => {
       .filter(meta => meta !== null)
       .slice(0, 20);
 
-    console.log(`Returning ${metas.length} movies`);
+    console.log(`Returning ${metas.length} movies from catalog.json`);
 
     return {
       statusCode: 200,
@@ -64,15 +52,14 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Catalog error:', error);
+    console.error('Catalog.json error:', error);
     
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         error: 'Internal server error',
-        message: error.message,
-        path: event.path
+        message: error.message
       })
     };
   }
