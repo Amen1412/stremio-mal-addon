@@ -14,16 +14,24 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const pathParts = event.path.split('/');
+    console.log('Catalog request path:', event.path);
+    console.log('Query params:', event.queryStringParameters);
+
+    // Parse the path: should be /catalog/movie/{catalogId}
+    const pathParts = event.path.split('/').filter(part => part !== '');
+    console.log('Path parts:', pathParts);
+    
+    // Find catalog in the path
     const catalogIndex = pathParts.findIndex(part => part === 'catalog');
     
-    if (catalogIndex === -1 || pathParts.length <= catalogIndex + 2) {
+    if (catalogIndex === -1 || pathParts.length < catalogIndex + 3) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
-          error: 'Invalid catalog path',
-          message: 'Expected format: /catalog/{type}/{id}'
+          error: 'Invalid path',
+          message: 'Expected format: /catalog/{type}/{id}',
+          received: event.path
         })
       };
     }
@@ -31,13 +39,16 @@ exports.handler = async (event, context) => {
     const type = pathParts[catalogIndex + 1];
     const catalogId = pathParts[catalogIndex + 2];
 
+    console.log(`Parsed - Type: ${type}, Catalog ID: ${catalogId}`);
+
     if (type !== 'movie') {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
           error: 'Invalid type',
-          message: 'Only movie type is supported'
+          message: 'Only movie type is supported',
+          received: type
         })
       };
     }
@@ -52,9 +63,16 @@ exports.handler = async (event, context) => {
 
     if (catalogId === 'malayalam_movies_latest') {
       const page = Math.floor(skip / 20) + 1;
-      const discoverOptions = { page, genre, sortBy: 'release_date.desc' };
+      const discoverOptions = {
+        page,
+        genre,
+        sortBy: 'release_date.desc'
+      };
       
+      console.log('Calling TMDB with options:', discoverOptions);
       const response = await tmdb.discoverMalayalamMovies(discoverOptions);
+      console.log('TMDB response received:', response ? 'Success' : 'Failed');
+      
       movies = response.results || [];
     } else {
       return {
@@ -88,8 +106,9 @@ exports.handler = async (event, context) => {
         statusCode: 502,
         headers,
         body: JSON.stringify({
-          error: 'External API error',
-          message: 'Unable to fetch movie data. Please try again later.'
+          error: 'TMDB API error',
+          message: 'Unable to fetch movie data from TMDB. Please try again later.',
+          details: error.message
         })
       };
     }
@@ -99,7 +118,8 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         error: 'Internal server error',
-        message: 'An unexpected error occurred'
+        message: 'An unexpected error occurred',
+        details: error.message
       })
     };
   }
