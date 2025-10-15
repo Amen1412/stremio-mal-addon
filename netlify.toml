@@ -2,14 +2,10 @@
   functions = "netlify/functions"
   publish = "public"
 
-[functions]
-  node_bundler = "esbuild"
-
 [build.environment]
   NODE_VERSION = "18"
 
-[[functions]]
-  name = "refresh-catalog"
+[functions."refresh-catalog"]
   schedule = "0 0 * * *"
 
 [[headers]]
