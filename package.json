@@ -1,0 +1,24 @@
+{
+  "name": "malayalam-stremio-addon",
+  "version": "1.0.0",
+  "description": "Stremio addon for Malayalam movies available on OTT platforms",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step required'",
+    "test": "node test/test-functions.js"
+  },
+  "keywords": ["stremio", "addon", "malayalam", "movies", "ott"],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.5.0",
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
