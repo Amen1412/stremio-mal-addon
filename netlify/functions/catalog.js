@@ -17,15 +17,24 @@ exports.handler = async (event, context) => {
     console.log('Full request path:', event.path);
     console.log('Query parameters:', event.queryStringParameters);
 
-    // Simple path handling - Stremio sends paths like:
-    // /catalog/movie/malayalam_movies_latest
-    // /catalog/movie/malayalam_movies_latest.json
-    
+    // Extract path without .json extension if present
+    const cleanPath = event.path.replace(/\.json$/, '');
+    console.log('Clean path:', cleanPath);
+
+    // Simple check for catalog requests
+    if (!cleanPath.includes('/catalog/') && !event.path.includes('/catalog/')) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ error: 'Not a catalog endpoint' })
+      };
+    }
+
     const queryParams = event.queryStringParameters || {};
     const skip = parseInt(queryParams.skip || '0');
     const genre = queryParams.genre;
     
-    console.log(`Request - Skip: ${skip}, Genre: ${genre || 'none'}`);
+    console.log(`Catalog request - Skip: ${skip}, Genre: ${genre || 'none'}`);
 
     // Get Malayalam movies
     const page = Math.floor(skip / 20) + 1;
@@ -37,7 +46,7 @@ exports.handler = async (event, context) => {
     
     console.log('Calling TMDB with options:', discoverOptions);
     const response = await tmdb.discoverMalayalamMovies(discoverOptions);
-    console.log('TMDB response received, movies count:', response.results.length);
+    console.log('TMDB response received, movies count:', response.results?.length || 0);
     
     const movies = response.results || [];
 
