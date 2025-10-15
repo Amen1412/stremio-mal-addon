@@ -8,6 +8,7 @@
 [functions."refresh-catalog"]
   schedule = "0 0 * * *"
 
+# Global CORS headers
 [[headers]]
   for = "/*"
   [headers.values]
@@ -16,6 +17,7 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept"
     Access-Control-Max-Age = "86400"
 
+# Function-specific CORS headers
 [[headers]]
   for = "/.netlify/functions/*"
   [headers.values]
@@ -24,6 +26,7 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept"
     Access-Control-Max-Age = "86400"
 
+# JSON file CORS
 [[headers]]
   for = "*.json"
   [headers.values]
@@ -31,3 +34,32 @@
     Access-Control-Allow-Methods = "GET, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type"
     Content-Type = "application/json"
+
+# REDIRECTS - The key to making Stremio work!
+# Stremio expects these exact URL patterns:
+
+# Redirect catalog requests to the function
+[[redirects]]
+  from = "/catalog/movie/malayalam_movies_latest"
+  to = "/.netlify/functions/catalog"
+  status = 200
+  headers = {Access-Control-Allow-Origin = "*"}
+
+[[redirects]]
+  from = "/catalog/movie/malayalam_movies_latest.json"
+  to = "/.netlify/functions/catalog"
+  status = 200
+  headers = {Access-Control-Allow-Origin = "*"}
+
+# Handle catalog with skip parameter
+[[redirects]]
+  from = "/catalog/movie/malayalam_movies_latest?*"
+  to = "/.netlify/functions/catalog?:splat"
+  status = 200
+  headers = {Access-Control-Allow-Origin = "*"}
+
+[[redirects]]
+  from = "/catalog/movie/malayalam_movies_latest.json?*"
+  to = "/.netlify/functions/catalog?:splat"
+  status = 200
+  headers = {Access-Control-Allow-Origin = "*"}
