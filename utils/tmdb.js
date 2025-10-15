@@ -29,91 +29,80 @@ class TMDB {
    * @returns {Promise<object>} TMDB API response
    */
   async discoverMalayalamMovies(options = {}) {
-    const {
-      page = 1,
-      genre = null,
-      year = null,
-      sortBy = 'release_date.desc'
-    } = options;
+  const { page = 1, genre = null, sortBy = 'release_date.desc' } = options;
+  const cacheKey = `discover_ml_${page}_${genre || 'all'}_${sortBy}`;
+  
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
 
-    const cacheKey = `discover_ml_${page}_${genre || 'all'}_${year || 'all'}_${sortBy}`;
+  try {
+    // FIRST: Get movies by searching for Malayalam terms
+    const searchTerms = [
+      'Malayalam', 'മലയാളം', 'Mollywood', 'Kerala', 'Kochi', 'Thiruvananthapuram'
+    ];
     
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    try {
-      const params = {
-        // Using Bearer token authentication - NO api_key needed
-        original_language: 'ml', // Malayalam
-        with_watch_providers: PROVIDER_LIST,
-        watch_region: 'IN', // India
-        sort_by: sortBy,
-        include_adult: false,
-        page: page,
-        'vote_count.gte': 1, // At least 1 vote to filter out unreleased movies
-        'primary_release_date.lte': new Date().toISOString().split('T')[0] // Only released movies
-      };
-
-      // Add genre filter if specified
-      if (genre) {
-        const genreId = getGenreId(genre);
-        if (genreId) {
-          params.with_genres = genreId;
-        }
-      }
-
-      // Add year filter if specified
-      if (year) {
-        params.primary_release_year = year;
-      }
-
-      console.log(`Fetching Malayalam movies from TMDB - Page: ${page}, Genre: ${genre || 'all'}`);
-      
-      const response = await this.api.get('/discover/movie', { params });
-      
-      // Cache the response
-      cache.set(cacheKey, response.data, 1800); // Cache for 30 minutes
-      
-      return response.data;
-    } catch (error) {
-      console.error('TMDB API Error:', error.message);
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
-      }
-      throw new Error(`TMDB API request failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Get movie details by ID
-   * @param {number} movieId - TMDB movie ID
-   * @returns {Promise<object>} Movie details
-   */
-  async getMovieDetails(movieId) {
-    const cacheKey = `movie_${movieId}`;
+    let allMovies = [];
     
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      return cached;
+    // Search approach - more reliable for Malayalam movies
+    for (const term of searchTerms) {
+      try {
+        const response = await this.api.get('/search/movie', {
+          params: {
+            query: term,
+            page: page,
+            language: 'en-US',
+            include_adult: false,
+            region: 'IN'
+          }
+        });
+        
+        // Filter for actual Malayalam movies
+        const malayalamMovies = response.data.results.filter(movie => 
+          movie.original_language === 'ml' && 
+          movie.release_date &&
+          new Date(movie.release_date) <= new Date()
+        );
+        
+        allMovies.push(...malayalamMovies);
+      } catch (err) {
+        console.log(`Search failed for term: ${term}`);
+      }
     }
 
-    try {
-      const response = await this.api.get(`/movie/${movieId}`, {
-        params: {
-          append_to_response: 'watch/providers'
-        }
-      });
-      
-      cache.set(cacheKey, response.data, 7200); // Cache for 2 hours
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching movie ${movieId}:`, error.message);
-      throw error;
+    // Remove duplicates and sort by release date
+    const uniqueMovies = allMovies.filter((movie, index, self) => 
+      index === self.findIndex(m => m.id === movie.id)
+    );
+    
+    uniqueMovies.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
+    
+    // Apply genre filter if specified
+    let filteredMovies = uniqueMovies;
+    if (genre) {
+      const genreId = getGenreId(genre);
+      if (genreId) {
+        filteredMovies = uniqueMovies.filter(movie => 
+          movie.genre_ids && movie.genre_ids.includes(genreId)
+        );
+      }
     }
+
+    const result = {
+      page: page,
+      results: filteredMovies.slice(0, 20), // Limit to 20 per page
+      total_pages: Math.ceil(filteredMovies.length / 20),
+      total_results: filteredMovies.length
+    };
+
+    cache.set(cacheKey, result, 1800);
+    return result;
+    
+  } catch (error) {
+    console.error('Malayalam movie search error:', error.message);
+    throw new Error(`Malayalam movie search failed: ${error.message}`);
   }
+}
+
 
   /**
    * Convert TMDB movie data to Stremio meta format
