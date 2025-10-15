@@ -47,15 +47,15 @@ class TMDB {
 
     try {
       const params = {
-        api_key: process.env.TMDB_API_KEY,
-        original_language: 'ml', // Malayalam
-        with_watch_providers: PROVIDER_LIST,
-        watch_region: 'IN', // India
-        sort_by: sortBy,
-        include_adult: false,
-        page: page,
-        'vote_count.gte': 1 // At least 1 vote to filter out unreleased movies
-      };
+  api_key: process.env.TMDB_API_KEY,
+  original_language: 'ml', // Malayalam
+  with_watch_providers: PROVIDER_LIST,
+  watch_region: 'IN', // India
+  sort_by: sortBy,
+  include_adult: false,
+  page: page,
+  'vote_count.gte': 1 // At least 1 vote to filter out unreleased movies
+};
 
       // Add genre filter if specified
       if (genre) {
