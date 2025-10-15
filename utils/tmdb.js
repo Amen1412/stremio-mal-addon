@@ -14,146 +14,167 @@ class TMDB {
         'Authorization': `Bearer ${process.env.TMDB_ACCESS_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      timeout: 15000
+      timeout: 30000
     });
   }
 
   /**
-   * Get ALL Malayalam movies from multiple sources and approaches
+   * TRADITIONAL METHOD BASED ON FLASK EXAMPLE - Gets ALL Malayalam OTT movies
    */
   async discoverMalayalamMovies(options = {}) {
     const { page = 1, genre = null } = options;
-    const cacheKey = `malayalam_all_movies_${page}_${genre || 'all'}`;
+    const cacheKey = `traditional_malayalam_all_${page}_${genre || 'all'}`;
     
     const cached = cache.get(cacheKey);
     if (cached) return cached;
 
     try {
-      console.log('🎬 Starting comprehensive Malayalam movie search...');
-      let allMalayalamMovies = [];
+      console.log('🎬 TRADITIONAL METHOD: Fetching ALL Malayalam OTT movies...');
+      let allMovies = [];
+      const today = new Date().toISOString().split('T')[0];
 
-      // METHOD 1: Direct search for popular Malayalam movies by name
-      const malayalamHits = [
-        // 2024-2025 releases
-        'Hridayapoorvam', 'Aavesham', 'Manjummel Boys', 'Premalu', 'Bramayugam', 'Identity',
-        'Aadujeevitham', 'Turbo', 'Bougainvillea', 'ARM', 'Vaazha', 'Kishkindha Kaandam',
-        'Guruvayoor Ambalanadayil', 'Varshangalkku Shesham', 'Anweshippin Kandethum', 'Barroz',
-        'Marco', 'Malaikottai Vaaliban', 'Jai Ganesh', 'Neru', 'RDX', 'Jawan of Vellimala',
+      // ===== PRIMARY METHOD: Traditional discover like Flask example =====
+      console.log('🎯 Discovering Malayalam movies with OTT availability...');
+      
+      for (let pageNum = 1; pageNum <= 100; pageNum++) { // Go through many pages like Flask
+        console.log(`[INFO] Checking page ${pageNum}`);
         
-        // Popular older releases
-        'Kanguva', 'Ajayante Randam Moshanam', 'Kappela', 'The Great Indian Kitchen',
-        'Drishyam', 'Lucifer', 'Bangalore Days', 'Minnal Murali', 'Kumbakonam Gopals',
-        'Kaathal The Core', 'Fahadh Faasil', 'Mohanlal', 'Mammootty', 'Tovino Thomas',
-        
-        // More Malayalam films
-        'Unda', 'Joseph', 'Virus', 'Take Off', 'Maheshinte Prathikaaram', 'Angamaly Diaries',
-        'Parava', 'Thondimuthalum Driksakshiyum', 'Ee.Ma.Yau', 'Kumbakonam Gopals',
-        'C U Soon', 'Lijo Jose Pellissery', 'Soubin Shahir', 'Nivin Pauly', 'Dulquer Salmaan'
-      ];
-
-      console.log('🔍 Searching for specific Malayalam movies...');
-      for (const movieName of malayalamHits) {
         try {
-          const searchResponse = await this.api.get('/search/movie', {
+          // Step 1: Discover Malayalam movies (like Flask)
+          const discoverResponse = await this.api.get('/discover/movie', {
             params: {
-              query: movieName,
-              language: 'en-US',
+              with_original_language: 'ml',
+              sort_by: 'release_date.desc',
+              'release_date.lte': today,
               region: 'IN',
+              page: pageNum,
               include_adult: false
             }
           });
-          
-          // Filter ONLY Malayalam movies
-          const malayalamResults = searchResponse.data.results.filter(movie => 
-            movie.original_language === 'ml' && 
-            movie.release_date &&
-            new Date(movie.release_date) <= new Date() // Only released movies
-          );
-          
-          if (malayalamResults.length > 0) {
-            allMalayalamMovies.push(...malayalamResults);
-            console.log(`✅ Found ${malayalamResults.length} Malayalam results for: ${movieName}`);
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 50)); // Rate limiting
-        } catch (err) {
-          console.log(`❌ Search failed for: ${movieName}`);
-        }
-      }
 
-      // METHOD 2: Search by Malayalam terms
-      const malayalamTerms = ['Malayalam', 'മലയാളം', 'Mollywood', 'Kerala film', 'Malayalam movie'];
-      console.log('🏷️ Searching by Malayalam terms...');
-      
-      for (const term of malayalamTerms) {
-        try {
-          for (let pageNum = 1; pageNum <= 5; pageNum++) {
-            const response = await this.api.get('/search/movie', {
-              params: {
-                query: term,
-                page: pageNum,
-                language: 'en-US',
-                include_adult: false,
-                region: 'IN'
-              }
-            });
-            
-            // STRICT filter for Malayalam language only
-            const malayalamMovies = response.data.results.filter(movie => 
-              movie.original_language === 'ml' && 
-              movie.release_date &&
-              new Date(movie.release_date) <= new Date() &&
-              movie.vote_count > 0 // Has some votes
-            );
-            
-            allMalayalamMovies.push(...malayalamMovies);
-            console.log(`✅ Term "${term}" page ${pageNum}: Found ${malayalamMovies.length} Malayalam movies`);
-            
-            if (response.data.results.length < 20) break;
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-        } catch (err) {
-          console.log(`❌ Search failed for term: ${term}`);
-        }
-      }
-
-      // METHOD 3: Discover with Malayalam language (backup)
-      console.log('🎯 Using discover API as backup...');
-      try {
-        for (let pageNum = 1; pageNum <= 10; pageNum++) {
-          const discoverResponse = await this.api.get('/discover/movie', {
-            params: {
-              original_language: 'ml',
-              sort_by: 'release_date.desc',
-              page: pageNum,
-              include_adult: false,
-              'primary_release_date.lte': new Date().toISOString().split('T')[0],
-              'vote_count.gte': 1
-            }
-          });
-          
           const movies = discoverResponse.data.results || [];
-          if (movies.length === 0) break;
+          if (movies.length === 0) {
+            console.log(`[INFO] No more movies found on page ${pageNum}. Stopping.`);
+            break;
+          }
+
+          // Step 2: Check each movie for OTT availability (like Flask)
+          for (const movie of movies) {
+            const movieId = movie.id;
+            const title = movie.title;
+            
+            if (!movieId || !title) continue;
+
+            try {
+              // Check OTT availability (like Flask does)
+              const providersResponse = await this.api.get(`/movie/${movieId}/watch/providers`);
+              const providerData = providersResponse.data;
+
+              // Check if available on OTT in India (like Flask)
+              if (providerData.results && 
+                  providerData.results.IN && 
+                  providerData.results.IN.flatrate) {
+                
+                console.log(`✅ ${title} - Available on OTT in India`);
+                
+                // Get external IDs for IMDb ID (like Flask)
+                try {
+                  const externalResponse = await this.api.get(`/movie/${movieId}/external_ids`);
+                  const externalData = externalResponse.data;
+                  const imdbId = externalData.imdb_id;
+                  
+                  if (imdbId && imdbId.startsWith('tt')) {
+                    movie.imdb_id = imdbId;
+                    allMovies.push(movie);
+                  }
+                } catch (extErr) {
+                  console.log(`External ID fetch failed for: ${title}`);
+                }
+              }
+              
+              // Rate limiting
+              await new Promise(resolve => setTimeout(resolve, 50));
+              
+            } catch (provErr) {
+              console.log(`Provider check failed for: ${title}`);
+            }
+          }
+
+          // Page-level rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
           
-          // Double-check language
-          const malayalamOnly = movies.filter(movie => movie.original_language === 'ml');
-          allMalayalamMovies.push(...malayalamOnly);
-          
-          console.log(`✅ Discover page ${pageNum}: Found ${malayalamOnly.length} Malayalam movies`);
-          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (pageErr) {
+          console.error(`[ERROR] Page ${pageNum} failed:`, pageErr.message);
+          break;
         }
-      } catch (err) {
-        console.log('❌ Discover method failed');
       }
 
-      // Remove duplicates and clean up
-      console.log('🧹 Removing duplicates and sorting...');
-      const uniqueMovies = allMalayalamMovies.filter((movie, index, self) => 
-        index === self.findIndex(m => m.id === movie.id) &&
-        movie.original_language === 'ml' // Triple check Malayalam language
-      );
+      // ===== SUPPLEMENTARY METHODS (for additional coverage) =====
+      console.log('📈 SUPPLEMENTARY: Adding extra coverage...');
+
+      // Method 2: Popular Malayalam actors (supplementary)
+      const topActors = ['Mohanlal', 'Mammootty', 'Fahadh Faasil', 'Dulquer Salmaan'];
+      for (const actor of topActors.slice(0, 2)) { // Limit to avoid timeout
+        try {
+          console.log(`🌟 Checking ${actor}'s filmography...`);
+          const personSearch = await this.api.get('/search/person', {
+            params: { query: actor, language: 'en-US' }
+          });
+
+          if (personSearch.data.results.length > 0) {
+            const personId = personSearch.data.results[0].id;
+            const credits = await this.api.get(`/person/${personId}/movie_credits`);
+            
+            if (credits.data.cast) {
+              const malayalamMovies = credits.data.cast.filter(movie => 
+                movie.original_language === 'ml' && 
+                movie.release_date && 
+                new Date(movie.release_date) <= new Date()
+              ).slice(0, 10); // Limit per actor
+              
+              // Check OTT availability for these too
+              for (const movie of malayalamMovies) {
+                try {
+                  const providersResponse = await this.api.get(`/movie/${movie.id}/watch/providers`);
+                  const providerData = providersResponse.data;
+
+                  if (providerData.results?.IN?.flatrate) {
+                    const externalResponse = await this.api.get(`/movie/${movie.id}/external_ids`);
+                    const imdbId = externalResponse.data.imdb_id;
+                    
+                    if (imdbId && imdbId.startsWith('tt')) {
+                      movie.imdb_id = imdbId;
+                      allMovies.push(movie);
+                    }
+                  }
+                  await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (err) {
+                  // Skip if provider check fails
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.log(`Actor search failed: ${actor}`);
+        }
+      }
+
+      // ===== DEDUPLICATE AND PROCESS (like Flask) =====
+      console.log('🧹 Deduplicating and processing...');
       
-      console.log(`📊 Total unique Malayalam movies found: ${uniqueMovies.length}`);
+      // Deduplicate by IMDb ID (like Flask does)
+      const seenIds = new Set();
+      const uniqueMovies = [];
+      
+      for (const movie of allMovies) {
+        const imdbId = movie.imdb_id;
+        if (imdbId && !seenIds.has(imdbId)) {
+          seenIds.add(imdbId);
+          uniqueMovies.push(movie);
+        }
+      }
+
+      console.log(`📊 TOTAL UNIQUE MALAYALAM OTT MOVIES: ${uniqueMovies.length}`);
 
       // Sort by release date (newest first)
       uniqueMovies.sort((a, b) => {
@@ -186,39 +207,66 @@ class TMDB {
         total_results: filteredMovies.length
       };
 
-      console.log(`📄 Returning page ${page}: ${paginatedMovies.length} Malayalam movies`);
-      console.log(`🎬 Sample movie check:`, paginatedMovies[0]?.original_title, 'Lang:', paginatedMovies[0]?.original_language);
+      console.log(`📄 Returning page ${page}: ${paginatedMovies.length} movies`);
+      console.log(`🎬 Sample movies:`, paginatedMovies.slice(0, 3).map(m => `${m.title} (${m.release_date})`));
 
-      // Cache for 2 hours since comprehensive search
-      cache.set(cacheKey, result, 7200);
+      // Cache for 4 hours (longer since this is comprehensive)
+      cache.set(cacheKey, result, 14400);
       return result;
-      
+
     } catch (error) {
-      console.error('❌ Malayalam movie comprehensive search error:', error.message);
-      throw new Error(`Malayalam movie search failed: ${error.message}`);
+      console.error('💥 Traditional Malayalam OTT discovery failed:', error.message);
+      throw new Error(`Malayalam OTT movie discovery failed: ${error.message}`);
     }
   }
 
+  /**
+   * Convert TMDB movie to Stremio format (like Flask)
+   */
   movieToStremioMeta(movie) {
-    if (!movie || movie.original_language !== 'ml') {
-      return null; // Extra safety check
-    }
+    if (!movie) return null;
 
-    return {
-      id: `tmdb:${movie.id}`,
-      type: 'movie',
-      name: movie.title || movie.original_title,
-      poster: movie.poster_path ? `${this.imageBaseURL}${movie.poster_path}` : null,
-      background: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : null,
-      genres: movie.genre_ids ? getGenreNames(movie.genre_ids) : [],
-      releaseInfo: movie.release_date ? new Date(movie.release_date).getFullYear().toString() : null,
-      imdbRating: movie.vote_average ? movie.vote_average.toFixed(1) : null,
-      description: movie.overview || 'No description available',
-      runtime: movie.runtime ? `${movie.runtime} min` : null
-    };
+    try {
+      const imdbId = movie.imdb_id;
+      const title = movie.title;
+      if (!imdbId || !title) return null;
+
+      return {
+        id: imdbId, // Use IMDb ID like Flask does
+        type: 'movie',
+        name: title,
+        poster: movie.poster_path ? `${this.imageBaseURL}${movie.poster_path}` : null,
+        description: movie.overview || '',
+        releaseInfo: movie.release_date || '',
+        background: movie.backdrop_path ? `https://image.tmdb.org/t/p/w780${movie.backdrop_path}` : null,
+        // Additional Stremio fields
+        genres: movie.genre_ids ? getGenreNames(movie.genre_ids) : [],
+        imdbRating: movie.vote_average ? movie.vote_average.toFixed(1) : null,
+        runtime: movie.runtime ? `${movie.runtime} min` : null
+      };
+    } catch (error) {
+      console.error('Error converting to Stremio meta:', error);
+      return null;
+    }
   }
 
-  // Keep other methods as they were...
+  // Keep other methods minimal
+  async getMovieDetails(movieId) {
+    const cacheKey = `movie_${movieId}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await this.api.get(`/movie/${movieId}`, {
+        params: { append_to_response: 'watch/providers' }
+      });
+      cache.set(cacheKey, response.data, 7200);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getTrendingMalayalamMovies() {
     const cacheKey = 'trending_malayalam';
     const cached = cache.get(cacheKey);
@@ -229,12 +277,10 @@ class TMDB {
       const malayalamMovies = response.data.results.filter(movie => 
         movie.original_language === 'ml'
       );
-
       const result = { ...response.data, results: malayalamMovies };
       cache.set(cacheKey, result, 3600);
       return result;
     } catch (error) {
-      console.error('Error fetching trending movies:', error.message);
       throw error;
     }
   }
@@ -248,16 +294,13 @@ class TMDB {
       const response = await this.api.get('/search/movie', {
         params: { query, page, language: 'en-US', include_adult: false, region: 'IN' }
       });
-
       const malayalamMovies = response.data.results.filter(movie => 
         movie.original_language === 'ml'
       );
-
       const result = { ...response.data, results: malayalamMovies };
       cache.set(cacheKey, result, 1800);
       return result;
     } catch (error) {
-      console.error('Search error:', error.message);
       throw error;
     }
   }
